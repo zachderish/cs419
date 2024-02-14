@@ -3,9 +3,18 @@
 import sys
 import math
 
+def fill_table(empty_table, data):
+    counter = 0
+    for i in range(rows):
+        for j in range(len(key)):
+            #print(i, j)
+            empty_table[i][j] = data[counter]
+            counter += 1
+    return empty_table
+
 def encrypt(table):
 
-    print(table)
+    #print(table)
 
     sorted_key = sorted(key)
     #print(sorted_key)
@@ -50,9 +59,33 @@ f = open(file, mode="rb")
 
 rows = math.ceil(blocksize[1] / len(key))
 
-table = [[0 for i in range(len(key))] for j in range(rows)]
+table = [[b'' for i in range(len(key))] for j in range(rows)]
 table_size = len(key) * rows
 
+counter = 0
+data_list = [b'' for i in range(table_size)]
+data = f.read(1)
+data_list[counter] = data
+#print(data_list)
+counter += 1
+while data:
+    if counter == blocksize[1]:
+        table = fill_table(table, data_list)
+        counter = 0
+        #print("here")
+        encrypt(table)
+        data_list = [b'' for i in range(table_size)]
+        table = [[0 for i in range(len(key))] for j in range(rows)]
+    else:
+        data = f.read(1)
+        data_list[counter] = data
+        counter += 1
+        #print(data_list)
+
+# encrypt what is leftover in table
+table = fill_table(table, data_list)
+encrypt(table)
+'''
 for i in range(rows):
     for j in range(len(key)):
         #print(i, j)
@@ -60,7 +93,7 @@ for i in range(rows):
         table[i][j] = data
 
 encrypt(table)
-
+'''
 
 
 f.close()
