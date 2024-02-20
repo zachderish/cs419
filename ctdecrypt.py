@@ -3,18 +3,21 @@
 import sys
 import math
 
-def fill_table(empty_table, data_list):
+def fill_table(empty_table, data_list, main_counter):
     #print(table_size, blocksize[1])
-    difference = table_size - blocksize[1]
+    #print(main_counter)
+    difference = table_size - main_counter
+    #print(difference)
     if difference > 0:
-        i = len(key) - 1
         j = rows - 1
         counter = 0
         while j >= 0:
+            i = len(key) - 1
             while i >= 0:
                 if counter == difference:
                     break
                 else:
+                    #print(j, i)
                     empty_table[j][i] = 0
                     counter += 1
                 i -= 1
@@ -43,10 +46,10 @@ def fill_table(empty_table, data_list):
         prev = char 
 
     if difference > 0:
-        y = len(key) - 1
         z = rows - 1
         counter = 0
         while z >= 0:
+            y = len(key) - 1
             while y >= 0:
                 if counter == difference:
                     break
@@ -105,9 +108,9 @@ data_list[counter] = data
 counter += 1
 while data:
     if counter == blocksize[1]:
-        table = fill_table(table, data_list)
+        table = fill_table(table, data_list, counter)
         counter = 0
-        #print("here")
+        #print(table)
         print_table(table)
         data_list = [b'' for i in range(table_size)]
         table = [[b'' for i in range(len(key))] for j in range(rows)]
@@ -118,5 +121,7 @@ while data:
         #print(data_list)
 
 # decrypt what is leftover in table
-table = fill_table(table, data_list)
+#print(data_list)
+table = fill_table(table, data_list, counter - 1)
 print_table(table)
+#print(table)

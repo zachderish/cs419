@@ -14,12 +14,11 @@ def fill_table(empty_table, data):
 
 def encrypt(table):
 
-    #print(table)
+    print(table)
 
     sorted_key = sorted(key)
     #print(sorted_key)
     prev = ""
-    final_output = ""
     for char in sorted_key:
         if char == prev:
             prev_index = key.index(prev)
