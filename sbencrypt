@@ -1,0 +1,130 @@
+#!/usr/bin/python3
+
+import sys
+
+BLOCK_SIZE = 16
+
+DEBUG = False
+
+def sdbm(string):
+    hash = 0
+    for char in string:
+        hash = ord(char) + (hash << 6) + (hash << 16) - hash
+    return hash
+
+def keystream_16(seed):
+    #print(seed)
+    counter = 0
+    stream = bytearray()
+    while counter < BLOCK_SIZE:
+        seed = (1103515245 * seed + 12345) % 256
+        #print(seed, bytes([seed]))
+        stream.append(seed)
+        counter += 1
+    return stream
+
+def encrypt(block, prev_block, stream):
+    # determine padding
+    padding = BLOCK_SIZE - len(block)
+    if padding > 0 and DEBUG == True:
+        print(f'padding from byte {len(block)}: value={padding}')
+
+    block = bytearray(block)
+    # add padding n times
+    for i in range(padding):
+        block.append(padding)
+    
+    # use IV or previous block
+    if block_counter == 0:
+        temp_block = bytes((a ^ b) for a, b in zip(block, stream))
+        stream = keystream_16(stream[15])
+    else: 
+        temp_block = bytes((a ^ b) for a, b in zip(block, prev_block))
+    
+    temp_block = bytearray(temp_block)
+
+    if DEBUG == True:
+        print(f"\nbefore shuffle: [ ", end='')
+        for byte in temp_block:
+            print(hex(byte).split("0x")[1] + " ", end='')
+        print(" ]")
+        print("keystream: [", end='')
+        for byte in stream:
+            print(hex(byte).split("0x")[1] + " ", end='')
+        print(" ]")
+
+    # swap bits according to stream
+    for i in range(BLOCK_SIZE):
+        first = stream[i] & 15
+        second = (stream[i] >> 4) & 15
+        if DEBUG == True:
+            print(f'{i}: swapping ({first}, {second}) = [ {hex(temp_block[first]).split("0x")[1]} <> {hex(temp_block[second]).split("0x")[1]} ]')
+        temp_block[first], temp_block[second] = temp_block[second], temp_block[first]
+    
+    # xor swapped block with stream
+    cipher_text = bytes((a ^ b) for a, b in zip(bytes(temp_block), bytes(stream)))
+    
+    if DEBUG == True:
+        print("after shuffle: [ ", end='')
+        for byte in temp_block:
+            print(f'{hex(byte).split("0x")[1]}' + " ", end='')
+        print(" ]\n after xor with keystream: [", end='')
+        for byte in cipher_text:
+            print(f'{hex(byte).split("0x")[1]}' + " ", end='')
+        print("]")
+
+    # write to file
+    write_file.write(cipher_text)
+    return cipher_text, padding, stream
+
+def check_arguments():
+    if len(sys.argv) != 4 and len(sys.argv) != 5:
+        err_message = "usage: ./sbencrypt [-d] password plaintextfile ciphertextfile"
+        print(err_message, file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    check_arguments()
+
+    if sys.argv[1] == "-d":
+        DEBUG = True
+
+        password = sys.argv[2]
+        text1 = sys.argv[3]
+        text2 = sys.argv[4]
+
+    else:
+        password = sys.argv[1]
+        text1 = sys.argv[2]
+        text2 = sys.argv[3]
+
+    seed = sdbm(password)
+    if DEBUG == True:
+        print(f'using seed={seed} from password="{password}"')
+    stream = keystream_16(seed)
+    og_stream = stream
+    try:
+        open_file = open(text1, mode='rb')
+    except:
+        err_message = f'plaintextfile="{text1}" ciphertextfile="{text2}" password="{password}"\n./sbencrypt: cannot open plaintext file for reading "{text1}"\n'
+        print(err_message, file=sys.stderr)
+        sys.exit(1)
+
+    write_file = open(text2, mode='wb')
+    block = open_file.read(BLOCK_SIZE)
+
+    block_counter = 0
+    prev_block = None
+    prev_padding = 0
+
+    while block:
+        prev_block, prev_padding, stream = encrypt(block, prev_block, stream)
+        block_counter += 1
+        stream = keystream_16(stream[15])
+        block = open_file.read(BLOCK_SIZE)
+
+    # 16 byte padding for singular 16 byte block
+    if block_counter == 1 and prev_padding == 0:
+        encrypt(b'\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10', prev_block, og_stream)
+
+

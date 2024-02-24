@@ -1,0 +1,136 @@
+#!/usr/bin/python3
+
+import sys
+
+BLOCK_SIZE = 16
+
+DEBUG = True
+
+def sdbm(string):
+    hash = 0
+    for char in string:
+        hash = ord(char) + (hash << 6) + (hash << 16) - hash
+    return hash
+
+def keystream_16(seed):
+    #print(seed)
+    counter = 0
+    stream = bytearray()
+    while counter < BLOCK_SIZE:
+        seed = (1103515245 * seed + 12345) % 256
+        #print(seed, bytes([seed]))
+        stream.append(seed)
+        counter += 1
+    return stream
+
+def decrypt(block, prev_block, stream):
+    # xor cipher text with stream
+    if block_counter == 0:
+        stream = keystream_16(stream[15])
+    temp_block = bytes((a ^ b) for a, b in zip(bytes(block), bytes(stream)))
+    temp_block = bytearray(temp_block)
+
+    if DEBUG == True:
+        print(f'encrypted block before shuffle: [ ', end='')
+        for byte in block:
+            print(hex(byte).split("0x")[1] + " ", end='')
+        print("]\nkeystream: [ ", end='')
+        for byte in stream:
+            print(hex(byte).split("0x")[1] + " ", end='')
+        print("]\nafter xor with keystream: [ ", end='')
+        for byte in temp_block:
+            print(hex(byte).split("0x")[1] + " ", end='')
+        print("] - scrambled")
+        
+
+    # unshuffle bytes
+    i = BLOCK_SIZE - 1
+    while i >= 0:
+        first = stream[i] & 15
+        second = (stream[i] >> 4) & 15
+        temp_block[first], temp_block[second] = temp_block[second], temp_block[first]
+        if DEBUG == True:
+            print(f'{i}: swapping ({first}, {second}) = [ {hex(temp_block[second]).split("0x")[1]} <> {hex(temp_block[first]).split("0x")[1]} ]')
+        i -= 1
+
+    if DEBUG == True:
+        print(f'plaintext before xor with CBC: [ ', end='')
+        for byte in temp_block:
+            print(hex(byte).split("0x")[1] + " ", end='')
+    print("]")
+
+    # use IV or previous block
+    if block_counter == 0:
+        plain_block = bytes((a ^ b) for a, b in zip(bytes(temp_block), bytes(og_stream)))
+    else: 
+        plain_block = bytes((a ^ b) for a, b in zip(bytes(temp_block), bytes(prev_block)))
+
+    if DEBUG == True:
+        print(f'after plaintext xor CBC: [ ', end='')
+        for byte in plain_block:
+            print(hex(byte).split("0x")[1] + " ", end='')
+    print("]")
+
+    plain_block = bytearray(plain_block)
+    plain_block_new = bytearray()
+    padding = 0
+    for byte in plain_block:
+        if byte < 1 or byte > 15 or byte == ord('\n'):
+            plain_block_new.append(byte)
+        else:
+            padding = byte
+    
+    if padding > 0 and DEBUG == True:
+        print(f'removing padding, start offset={BLOCK_SIZE - padding}: value={padding}')
+
+    write_file.write(plain_block_new)
+    return block, stream
+
+
+def check_arguments():
+    if len(sys.argv) != 4 and len(sys.argv) != 5:
+        err_message = "usage: ./sbencrypt [-d] password plaintextfile ciphertextfile"
+        print(err_message, file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    check_arguments()
+
+    if len(sys.argv) == 5:
+        DEBUG = True
+        password = sys.argv[2]
+        text1 = sys.argv[3]
+        text2 = sys.argv[4]
+    
+    else:
+        password = sys.argv[1]
+        text1 = sys.argv[2]
+        text2 = sys.argv[3]
+
+    seed = sdbm(password)
+    if DEBUG == True:
+            print(f'using seed={seed} from password="{password}"\n')
+    stream = keystream_16(seed)
+    og_stream = stream
+    try:
+        open_file = open(text1, mode='rb')
+    except:
+        err_message = f'plaintextfile="{text1}" ciphertextfile="{text2}" password="{password}"\n./sbencrypt: cannot open plaintext file for reading "{text1}"\n'
+        print(err_message, file=sys.stderr)
+        sys.exit(1)
+
+    write_file = open(text2, mode='wb')
+    block = open_file.read(BLOCK_SIZE)
+
+    block_counter = 0
+    prev_block = None
+    prev_padding = 0
+
+    while block:
+        prev_block, stream = decrypt(block, prev_block, stream)
+        
+        block_counter += 1
+        stream = keystream_16(stream[15])
+        block = open_file.read(BLOCK_SIZE)
+

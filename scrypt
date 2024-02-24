@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+
+import sys
+
+DEBUG = False
+
+def sdbm(string):
+    hash = 0
+    for char in string:
+        hash = ord(char) + (hash << 6) + (hash << 16) - hash
+    return hash
+
+def keystream(seed):
+    #print(seed)
+    next_num = (1103515245 * seed + 12345) % 256
+    return next_num
+
+def check_arguments():
+    if len(sys.argv) != 4 and len(sys.argv) != 5:
+        err_message = "usage: ./scrypt [-d] password plaintextfile ciphertextfile"
+        print(err_message, file=sys.stderr)
+        sys.exit(1)
+
+check_arguments()
+
+if (sys.argv[1] == "-d"):
+    password = sys.argv[2]
+
+    text1 = sys.argv[3]
+    text2 = sys.argv[4]
+
+    DEBUG = True
+
+else: 
+    password = sys.argv[1]
+
+    text1 = sys.argv[2]
+    text2 = sys.argv[3]
+
+file1 = open(text1, mode="rb")
+file2 = open(text2, mode="wb")
+
+
+key = sdbm(password)
+print(f'using seed={key} from password="{password}"')
+char = file1.read(1)
+
+while char:
+    #print(key)
+    key = keystream(key)
+    char_int = int.from_bytes(char, "little")
+
+    cipher_char = key ^ char_int
+
+    if DEBUG == True:
+        if 32 <= cipher_char <= 127:
+            print(f"{hex(char_int)}({chr(char_int)}) xor {hex(key)} = {hex(cipher_char)}({chr(cipher_char)})")
+        else: 
+            print(f"{hex(char_int)}({chr(char_int)}) xor {hex(key)} = {hex(cipher_char)}(?)")
+
+    file2.write(int.to_bytes(cipher_char, 1, byteorder='big'))
+    char = file1.read(1)

@@ -1,0 +1,124 @@
+#!/usr/bin/python3
+
+import sys
+import math
+
+def fill_table(empty_table, data):
+    counter = 0
+    for i in range(rows):
+        for j in range(len(key)):
+            #print(i, j)
+            empty_table[i][j] = data[counter]
+            counter += 1
+    return empty_table
+
+def encrypt(table):
+
+    #print(table)
+
+    sorted_key = sorted(key)
+    #print(sorted_key)
+    prev = ""
+    for char in sorted_key:
+        if char == prev:
+            prev_index = key.index(prev)
+            for i in range(rows):
+                print((table[i][key.index(char, prev_index + 1)]).decode('ascii', errors='replace'), end="")
+
+            #print(key.index(char, prev_index + 1))
+        else:
+            for i in range(rows):
+                print((table[i][key.index(char)]).decode('ascii', errors='replace'), end="")
+            #print(key.index(char))
+        prev = char 
+
+tag_1 = sys.argv[1]
+content_1 = sys.argv[2]
+
+blocksize = [False, 16]
+key = ""
+file = ""
+
+if (tag_1 == "-b"):
+    try:
+        blocksize[1] = int(content_1)
+        blocksize[0] = True
+
+        key = sys.argv[4]
+        file = sys.argv[5]
+
+    except ValueError:
+        print(ValueError.__name__, file=sys.stderr)
+
+elif (tag_1 == "-k"):
+    key = content_1
+    file = sys.argv[3]
+
+f = open(file, mode="rb")
+
+rows = math.ceil(blocksize[1] / len(key))
+
+table = [[b'' for i in range(len(key))] for j in range(rows)]
+table_size = len(key) * rows
+
+counter = 0
+data_list = [b'' for i in range(table_size)]
+data = f.read(1)
+data_list[counter] = data
+#print(data_list)
+counter += 1
+while data:
+    if counter == blocksize[1]:
+        table = fill_table(table, data_list)
+        counter = 0
+        #print("here")
+        encrypt(table)
+        data_list = [b'' for i in range(table_size)]
+        table = [[0 for i in range(len(key))] for j in range(rows)]
+    else:
+        data = f.read(1)
+        data_list[counter] = data
+        counter += 1
+        #print(data_list)
+
+# encrypt what is leftover in table
+table = fill_table(table, data_list)
+encrypt(table)
+'''
+for i in range(rows):
+    for j in range(len(key)):
+        #print(i, j)
+        data = f.read(1)
+        table[i][j] = data
+
+encrypt(table)
+'''
+
+
+f.close()
+exit()
+
+for i in range(rows):
+    for j in range(len(key)):
+        #print(i, j)
+        data = f.read(1)
+        table[i][j] = data
+
+#print(table)
+
+sorted_key = sorted(key)
+#print(sorted_key)
+prev = ""
+final_output = ""
+for char in sorted_key:
+    if char == prev:
+        prev_index = key.index(prev)
+        for i in range(rows):
+            print((table[i][key.index(char, prev_index + 1)]).decode('ascii', errors='replace'), end="")
+
+        #print(key.index(char, prev_index + 1))
+    else:
+        for i in range(rows):
+            print((table[i][key.index(char)]).decode('ascii', errors='replace'), end="")
+        #print(key.index(char))
+    prev = char 
