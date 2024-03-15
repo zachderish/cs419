@@ -26,7 +26,7 @@ log = open("log.txt", "r")
 first_line = log.readline()
 first_line = first_line.replace('\n', '')
 if first_line.split()[2] != "begin":
-    print("failed: error on line 1", file = sys.stderr)
+    print("failed: error on first line", file = sys.stderr)
     exit(1)
 
 sha256_hash = hashlib.sha256(first_line.encode()).digest()
@@ -39,7 +39,7 @@ while line:
     hash_current = line.split()[2]
 
     if hash_current != hash_prev:
-        print(f"failed: error on first line", file = sys.stderr)
+        print(f"failed: error on line {line_counter}", file = sys.stderr)
         exit(1)
 
     sha256_hash = hashlib.sha256(line.encode()).digest()

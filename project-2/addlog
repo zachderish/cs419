@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 
 
 import sys
 import hashlib
@@ -39,5 +39,3 @@ sha256_hash = hashlib.sha256(log_line.encode()).digest()
 base64_encoded_hash = base64.b64encode(sha256_hash).decode()
 log_head = open("loghead.txt", "w")
 log_head.write(base64_encoded_hash)
-
-
